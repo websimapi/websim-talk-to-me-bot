@@ -24,18 +24,19 @@ export async function handleMemoryCommand(command) {
     switch (command.type) {
         case 'SAVE_MEMORY':
             memories.push({
+                id: Date.now(),
                 date: new Date().toISOString(),
                 content: command.payload
             });
             saveMemories(memories);
-            return `Memory saved: "${command.payload}"`;
+            return `✓ Memory saved: "${command.payload}"`;
 
         case 'GET_MEMORIES':
             if (memories.length === 0) {
-                return "No memories found.";
+                return "No memories found in storage.";
             }
-            const summary = memories.map(mem => `- ${mem.content}`).join('\n');
-            return `Here are the memories I have:\n${summary}`;
+            const summary = memories.map(mem => `• ${mem.content} (saved ${new Date(mem.date).toLocaleDateString()})`).join('\n');
+            return `Retrieved ${memories.length} memories:\n${summary}`;
 
         case 'SEARCH_MEMORIES':
             const query = command.payload.toLowerCase();
@@ -43,11 +44,10 @@ export async function handleMemoryCommand(command) {
             if (results.length === 0) {
                 return `No memories found matching "${command.payload}".`;
             }
-            const searchSummary = results.map(mem => `- ${mem.content}`).join('\n');
-            return `I found these memories related to "${command.payload}":\n${searchSummary}`;
+            const searchSummary = results.map(mem => `• ${mem.content} (saved ${new Date(mem.date).toLocaleDateString()})`).join('\n');
+            return `Found ${results.length} memories matching "${command.payload}":\n${searchSummary}`;
             
         default:
             return "Unknown memory command.";
     }
 }
-

@@ -42,13 +42,14 @@ async function handleUserInput(text) {
         let finalSpeech = "I'm not sure how to respond to that.";
         let hasCommands = true;
         let isSystemMessage = false;
+        const originalUserQuestion = text; // Store the original question for context
         const MAX_LOOPS = 5; // Safety break to prevent infinite loops
         let loopCount = 0;
 
         while (hasCommands && loopCount < MAX_LOOPS) {
             loopCount++;
             
-            const rawAIResponse = await getAIResponse(currentInput, isSystemMessage);
+            const rawAIResponse = await getAIResponse(currentInput, isSystemMessage, originalUserQuestion);
             const parsed = parseAIResponse(rawAIResponse);
             
             // The latest speech is always our candidate for the final response
@@ -59,11 +60,19 @@ async function handleUserInput(text) {
             if (parsed.commands.length > 0) {
                 isSystemMessage = true; // Subsequent calls are internal system messages
                 hasCommands = true;
-                setStatus('thinking', 'Accessing memory...');
+                setStatus('thinking', 'Accessing memories...');
                 
                 const commandPromises = parsed.commands.map(handleMemoryCommand);
                 const commandResults = await Promise.all(commandPromises);
-                currentInput = commandResults.join('\n'); // Feed results back to AI
+                
+                // Provide clearer context when feeding memory results back
+                const memoryContext = commandResults.join('\n');
+                currentInput = memoryContext;
+                
+                // Add system message to help AI understand it should now respond with the memory context
+                if (loopCount === 1) {
+                    currentInput = `${memoryContext}\n\nNow provide a complete response to the user using this memory information.`;
+                }
             } else {
                 hasCommands = false;
             }

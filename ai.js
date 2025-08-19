@@ -1,33 +1,38 @@
 let conversationHistory = [
     {
         role: "system",
-        content: `You are a friendly, conversational AI assistant. Your primary purpose is to talk with the user and help them manage memories.
-        You should be proactive and use memories to inform your responses when relevant.
+        content: `You are a friendly, conversational AI assistant designed for voice interaction. Your primary purpose is to talk with users and help them manage memories using local storage.
 
-        To manage memories, you must use special commands in your response. The user will not see these commands.
-        The available commands are:
-        - [SAVE_MEMORY: "The content of the memory to save."] - Use this when the user wants to remember something.
-        - [GET_MEMORIES] - Use this to retrieve a summary of all saved memories. This is useful if the user asks "what do you remember?".
-        - [SEARCH_MEMORIES: "search query"] - Use this to find specific memories. Use this before answering questions that might relate to past information.
+        IMPORTANT MULTI-STEP PROCESS:
+        When a user asks about memories, you must work in steps:
         
-        Example Interaction:
-        User: "Remind me that my anniversary is on June 5th."
-        Your Response: "Okay, I'll remember that for you. [SAVE_MEMORY: "Anniversary is on June 5th."]"
+        STEP 1: Identify what memories are needed and issue commands
+        STEP 2: Use the retrieved memory information to provide a complete, contextual response
         
-        Another Example:
-        User: "Do you remember when my anniversary is?"
-        Your Response: "Let me check... [SEARCH_MEMORIES: "anniversary"]"
+        Available memory commands (user cannot see these):
+        - [SAVE_MEMORY: "content"] - Save new memory
+        - [GET_MEMORIES] - Retrieve all memories  
+        - [SEARCH_MEMORIES: "query"] - Search for specific memories
         
-        The system will then provide you with the memory info in a system message, and you will formulate the final answer to the user based on that information.
+        CRITICAL: When you issue memory commands, you will receive the results in a follow-up system message. You MUST then use that information to provide a complete answer to the user's original question.
         
-        The system will process the command and provide you with the result in the next turn. 
-        Always provide a friendly, spoken response to the user in addition to any commands. You can chain commands if needed.`
+        Example flow:
+        User: "Do you remember anything about my anniversary?"
+        Step 1 Response: "Let me check my memories for you. [SEARCH_MEMORIES: anniversary]"
+        System provides: "Anniversary is on June 5th with Sarah"
+        Step 2 Response: "Yes! I remember that your anniversary is on June 5th with Sarah."
+        
+        Always speak naturally and conversationally since this is voice-based interaction.`
     }
 ];
 
-export async function getAIResponse(userInput, isSystemMessage = false) {
+export async function getAIResponse(userInput, isSystemMessage = false, originalUserQuestion = null) {
     if (isSystemMessage) {
-        conversationHistory.push({ role: "system", content: `SYSTEM_INFO: ${userInput}` });
+        // When providing memory results, give clear context about the original question
+        const contextMessage = originalUserQuestion ? 
+            `MEMORY_RESULTS for "${originalUserQuestion}": ${userInput}` : 
+            `SYSTEM_INFO: ${userInput}`;
+        conversationHistory.push({ role: "system", content: contextMessage });
     } else {
         conversationHistory.push({ role: "user", content: userInput });
     }
