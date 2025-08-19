@@ -17,6 +17,7 @@ function setStatus(state, text) {
 }
 
 function addMessage(sender, text) {
+    if (!text || !text.trim()) return; // Don't add empty messages
     const messageElem = document.createElement('div');
     messageElem.classList.add('message', `${sender}-message`);
     messageElem.textContent = text;
@@ -31,17 +32,30 @@ async function handleUserInput(text) {
     setStatus('thinking', 'Thinking...');
     
     try {
+        // First pass: get AI response with potential commands
         const rawAIResponse = await getAIResponse(text);
-        const { commands, speech } = parseAIResponse(rawAIResponse);
+        let { commands, speech } = parseAIResponse(rawAIResponse);
         
-        let commandResults = '';
+        // If there's an initial speech part, show it, but don't speak yet.
+        if (speech) {
+            addMessage('bot', speech);
+        }
+
+        // Handle commands if any
         if (commands.length > 0) {
-            commandResults = await handleMemoryCommand(commands[0]); // Simple: handle one command
-            // Tell the AI what happened
-            await getAIResponse(commandResults, false); 
+            // For now, handle one command per turn for simplicity
+            const command = commands[0];
+            setStatus('thinking', 'Accessing memory...');
+            const commandResult = await handleMemoryCommand(command);
+            
+            // Second pass: get a new spoken response from the AI based on the command result
+            const finalAIResponse = await getAIResponse(commandResult, false);
+            const finalParsed = parseAIResponse(finalAIResponse);
+            speech = finalParsed.speech; // This is the new text to be spoken
         }
 
         addMessage('bot', speech);
+        setStatus('speaking', 'Speaking...');
 
         tts.speak(speech, () => {
             // on speech end
@@ -105,4 +119,3 @@ speechRecognition.onError = (event) => {
 
 // Initial state
 setStatus('idle', 'Click Start to begin');
-
