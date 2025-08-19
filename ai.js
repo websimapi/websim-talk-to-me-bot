@@ -17,19 +17,19 @@ let conversationHistory = [
         Another Example:
         User: "Do you remember when my anniversary is?"
         Your Response: "Let me check... [SEARCH_MEMORIES: "anniversary"]"
-        (System will then provide you the memory info, and you will formulate the final answer)
+        
+        The system will then provide you with the memory info in a system message, and you will formulate the final answer to the user based on that information.
         
         The system will process the command and provide you with the result in the next turn. 
         Always provide a friendly, spoken response to the user in addition to any commands. You can chain commands if needed.`
     }
 ];
 
-export async function getAIResponse(userInput, addToHistory = true) {
-    if(addToHistory) {
-        conversationHistory.push({ role: "user", content: userInput });
-    } else {
-        // This is for system messages/command results
+export async function getAIResponse(userInput, isSystemMessage = false) {
+    if (isSystemMessage) {
         conversationHistory.push({ role: "system", content: `SYSTEM_INFO: ${userInput}` });
+    } else {
+        conversationHistory.push({ role: "user", content: userInput });
     }
     
     // Keep history from getting too long
@@ -44,9 +44,8 @@ export async function getAIResponse(userInput, addToHistory = true) {
 
         const aiResponse = completion.content;
         
-        if (addToHistory) {
-            conversationHistory.push({ role: "assistant", content: aiResponse });
-        }
+        // Always add the assistant's response to the history.
+        conversationHistory.push({ role: "assistant", content: aiResponse });
         
         return aiResponse;
     } catch (error) {

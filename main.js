@@ -41,14 +41,14 @@ async function handleUserInput(text) {
         let currentInput = text;
         let finalSpeech = "I'm not sure how to respond to that.";
         let hasCommands = true;
-        let isFirstPass = true;
+        let isSystemMessage = false;
         const MAX_LOOPS = 5; // Safety break to prevent infinite loops
         let loopCount = 0;
 
         while (hasCommands && loopCount < MAX_LOOPS) {
             loopCount++;
             
-            const rawAIResponse = await getAIResponse(currentInput, isFirstPass);
+            const rawAIResponse = await getAIResponse(currentInput, isSystemMessage);
             const parsed = parseAIResponse(rawAIResponse);
             
             // The latest speech is always our candidate for the final response
@@ -57,7 +57,7 @@ async function handleUserInput(text) {
             }
 
             if (parsed.commands.length > 0) {
-                isFirstPass = false; // Subsequent calls are internal system messages
+                isSystemMessage = true; // Subsequent calls are internal system messages
                 hasCommands = true;
                 setStatus('thinking', 'Accessing memory...');
                 
