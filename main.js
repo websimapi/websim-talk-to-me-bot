@@ -38,44 +38,40 @@ async function handleUserInput(text) {
     setStatus('thinking', 'Thinking...');
     
     try {
+        // --- Agentic Loop ---
+        const MAX_STEPS = 5;
+        let currentStep = 0;
+        let isDone = false;
         let currentInput = text;
         let finalSpeech = "I'm not sure how to respond to that.";
-        let hasCommands = true;
-        let isSystemMessage = false;
-        const originalUserQuestion = text; // Store the original question for context
-        const MAX_LOOPS = 5; // Safety break to prevent infinite loops
-        let loopCount = 0;
+        
+        while (currentStep < MAX_STEPS && !isDone) {
+            currentStep++;
 
-        while (hasCommands && loopCount < MAX_LOOPS) {
-            loopCount++;
-            
-            const rawAIResponse = await getAIResponse(currentInput, isSystemMessage, originalUserQuestion);
+            const rawAIResponse = await getAIResponse(currentInput);
             const parsed = parseAIResponse(rawAIResponse);
-            
-            // The latest speech is always our candidate for the final response
-            if (parsed.speech) {
-                finalSpeech = parsed.speech;
-            }
 
-            if (parsed.commands.length > 0) {
-                isSystemMessage = true; // Subsequent calls are internal system messages
-                hasCommands = true;
+            if (parsed.commands && parsed.commands.length > 0) {
+                // ACTION STEP: AI wants to use a tool (memory)
                 setStatus('thinking', 'Accessing memories...');
                 
                 const commandPromises = parsed.commands.map(handleMemoryCommand);
                 const commandResults = await Promise.all(commandPromises);
+                const resultsText = commandResults.join('\n');
                 
-                // Provide clearer context when feeding memory results back
-                const memoryContext = commandResults.join('\n');
-                currentInput = memoryContext;
-                
-                // Add system message to help AI understand it should now respond with the memory context
-                if (loopCount === 1) {
-                    currentInput = `${memoryContext}\n\nNow provide a complete response to the user using this memory information.`;
-                }
+                // Create a new input for the AI that includes the tool results
+                currentInput = `Here are the results from your memory command(s):\n${resultsText}\n\nBased on these results, what is your final response to the user?`;
+
             } else {
-                hasCommands = false;
+                // RESPONSE STEP: AI has a final answer
+                finalSpeech = parsed.speech || "I seem to be at a loss for words.";
+                isDone = true;
             }
+        }
+        // --- End Agentic Loop ---
+
+        if (!isDone) {
+            finalSpeech = "I got stuck in a thought loop. Could you rephrase that?";
         }
 
         addMessage('bot', finalSpeech);
