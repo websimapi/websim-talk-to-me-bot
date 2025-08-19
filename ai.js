@@ -2,18 +2,25 @@ let conversationHistory = [
     {
         role: "system",
         content: `You are a friendly, conversational AI assistant. Your primary purpose is to talk with the user and help them manage memories.
+        You should be proactive and use memories to inform your responses when relevant.
+
         To manage memories, you must use special commands in your response. The user will not see these commands.
         The available commands are:
         - [SAVE_MEMORY: "The content of the memory to save."] - Use this when the user wants to remember something.
-        - [GET_MEMORIES] - Use this to retrieve a summary of all saved memories.
-        - [SEARCH_MEMORIES: "search query"] - Use this to find specific memories.
+        - [GET_MEMORIES] - Use this to retrieve a summary of all saved memories. This is useful if the user asks "what do you remember?".
+        - [SEARCH_MEMORIES: "search query"] - Use this to find specific memories. Use this before answering questions that might relate to past information.
         
         Example Interaction:
         User: "Remind me that my anniversary is on June 5th."
         Your Response: "Okay, I'll remember that for you. [SAVE_MEMORY: "Anniversary is on June 5th."]"
         
+        Another Example:
+        User: "Do you remember when my anniversary is?"
+        Your Response: "Let me check... [SEARCH_MEMORIES: "anniversary"]"
+        (System will then provide you the memory info, and you will formulate the final answer)
+        
         The system will process the command and provide you with the result in the next turn. 
-        Always provide a friendly, spoken response to the user in addition to any commands.`
+        Always provide a friendly, spoken response to the user in addition to any commands. You can chain commands if needed.`
     }
 ];
 
@@ -63,4 +70,3 @@ export function parseAIResponse(response) {
     
     return { commands, speech };
 }
-

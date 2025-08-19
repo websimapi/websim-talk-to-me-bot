@@ -26,38 +26,53 @@ function addMessage(sender, text) {
 }
 
 async function handleUserInput(text) {
-    if (!text.trim()) return;
+    if (!text.trim()) {
+        if (isActive) {
+            // If silence was detected, just restart listening without processing
+            speechRecognition.start();
+        }
+        return;
+    }
     
     addMessage('user', text);
     setStatus('thinking', 'Thinking...');
     
     try {
-        // First pass: get AI response with potential commands
-        const rawAIResponse = await getAIResponse(text);
-        let { commands, speech } = parseAIResponse(rawAIResponse);
-        
-        // If there's an initial speech part, show it, but don't speak yet.
-        if (speech) {
-            addMessage('bot', speech);
-        }
+        let currentInput = text;
+        let finalSpeech = "I'm not sure how to respond to that.";
+        let hasCommands = true;
+        let isFirstPass = true;
+        const MAX_LOOPS = 5; // Safety break to prevent infinite loops
+        let loopCount = 0;
 
-        // Handle commands if any
-        if (commands.length > 0) {
-            // For now, handle one command per turn for simplicity
-            const command = commands[0];
-            setStatus('thinking', 'Accessing memory...');
-            const commandResult = await handleMemoryCommand(command);
+        while (hasCommands && loopCount < MAX_LOOPS) {
+            loopCount++;
             
-            // Second pass: get a new spoken response from the AI based on the command result
-            const finalAIResponse = await getAIResponse(commandResult, false);
-            const finalParsed = parseAIResponse(finalAIResponse);
-            speech = finalParsed.speech; // This is the new text to be spoken
+            const rawAIResponse = await getAIResponse(currentInput, isFirstPass);
+            const parsed = parseAIResponse(rawAIResponse);
+            
+            // The latest speech is always our candidate for the final response
+            if (parsed.speech) {
+                finalSpeech = parsed.speech;
+            }
+
+            if (parsed.commands.length > 0) {
+                isFirstPass = false; // Subsequent calls are internal system messages
+                hasCommands = true;
+                setStatus('thinking', 'Accessing memory...');
+                
+                const commandPromises = parsed.commands.map(handleMemoryCommand);
+                const commandResults = await Promise.all(commandPromises);
+                currentInput = commandResults.join('\n'); // Feed results back to AI
+            } else {
+                hasCommands = false;
+            }
         }
 
-        addMessage('bot', speech);
+        addMessage('bot', finalSpeech);
         setStatus('speaking', 'Speaking...');
 
-        tts.speak(speech, () => {
+        tts.speak(finalSpeech, () => {
             // on speech end
             if(isActive) {
                 speechRecognition.start();
@@ -68,9 +83,15 @@ async function handleUserInput(text) {
 
     } catch (error) {
         console.error('Error processing user input:', error);
-        setStatus('idle', 'An error occurred. Click Start.');
-        isActive = false;
-        toggleButtons();
+        const errorMessage = "Sorry, I ran into a little trouble. Could you try that again?";
+        addMessage('bot', errorMessage);
+        tts.speak(errorMessage, () => {
+            if (isActive) {
+                speechRecognition.start();
+            } else {
+                 setStatus('idle', 'An error occurred. Click Start.');
+            }
+        });
     }
 }
 
